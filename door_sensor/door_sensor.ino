@@ -72,3 +72,56 @@ void loop() {
     client.publish("/hello", "world");
   }
 }
+
+
+
+
+
+#define DOOR_SENSOR 15
+
+#define DOOR_OPEN 1
+#define DOOR_CLOSED 0
+int open_close;
+
+#define READ_DELAY_MS 500
+int next_read=0;
+
+void print_door_state(int door_state) {
+    if (door_state == DOOR_OPEN) {
+      Serial.println("Door is open!");
+    } else {
+      Serial.println("Door is closed");
+    }
+}
+
+void setup() {
+  // put your setup code here, to run once:
+
+  Serial.begin(115200);
+  while (!Serial) {}
+
+  pinMode(DOOR_SENSOR, INPUT_PULLUP);
+  open_close=digitalRead(DOOR_SENSOR);
+  Serial.print("Initial Door State is: ");
+  print_door_state(open_close);
+
+  Serial.println("Setup Done");
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+  if (millis() > next_read) {
+    int pin_mode = digitalRead(DOOR_SENSOR); 
+  
+    if (pin_mode != open_close) {
+      print_door_state(pin_mode);
+      open_close=pin_mode;
+      next_read = millis() + READ_DELAY_MS;
+    }
+  }
+}
+
+
+
