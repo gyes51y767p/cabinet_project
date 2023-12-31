@@ -6,27 +6,39 @@
 //
 // by Joël Gähwiler
 // https://github.com/256dpi/arduino-mqtt
-
+#include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include <MQTT.h>
 
 const char ssid[] = "LAK-FOXSPARROW";
 const char pass[] = "4793263208";
 
-WiFiClient net;
+WiFiClientSecure net;
 MQTTClient client;
+
+
+#define DOOR_SENSOR 15
+#define DOOR_OPEN 1
+#define DOOR_CLOSED 0
+#define READ_DELAY_MS 500
+
+int next_read=0;
+int open_close;
 
 unsigned long lastMillis = 0;
 
+
+
 void connect() {
-  Serial.print("checking wifi...");
+  Serial.print("checking wifi");
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(1000);
   }
 
-  Serial.print("\nconnecting...");
-  while (!client.connect("arduino", "public", "public")) {
+  Serial.print("\nconnecting MQTT");
+  net.setInsecure();
+  while (!client.connect("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", "gyes51y767p", "@Mm5648970")) {
     Serial.print(".");
     delay(1000);
   }
@@ -46,16 +58,41 @@ void messageReceived(String &topic, String &payload) {
   // or push to a queue and handle it in the loop after calling `client.loop()`.
 }
 
+void print_door_state(int door_state) {
+    if (door_state == DOOR_OPEN) {
+      Serial.println("Door is open!");
+    } else {
+      Serial.println("Door is closed");
+    }
+}
+void send_door_state(int door_state) {
+    if (door_state == DOOR_OPEN) {
+      client.publish("/door1", "1");
+    } else {
+      client.publish("/door1", "0");
+    }
+}
+
+
+
 void setup() {
   Serial.begin(115200);
+  while (!Serial) {}
+
+  pinMode(DOOR_SENSOR, INPUT_PULLUP);
+  open_close=digitalRead(DOOR_SENSOR);
+  Serial.print("Initial Door State is: ");
+  print_door_state(open_close);
+
   WiFi.begin(ssid, pass);
 
   // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported
   // by Arduino. You need to set the IP address directly.
-  client.begin("public.cloud.shiftr.io", net);
+  client.begin("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", 8883, net);
   client.onMessage(messageReceived);
 
   connect();
+  Serial.println("Setup Done");
 }
 
 void loop() {
@@ -65,10 +102,20 @@ void loop() {
   if (!client.connected()) {
     connect();
   }
-
-  // publish a message roughly every second.
-  if (millis() - lastMillis > 1000) {
-    lastMillis = millis();
-    client.publish("/hello", "world");
+  if (millis() > next_read) {
+    int pin_mode = digitalRead(DOOR_SENSOR); 
+  
+    if (pin_mode != open_close) {
+        print_door_state(pin_mode);
+        send_door_state(pin_mode);
+        open_close=pin_mode;
+        next_read = millis() + READ_DELAY_MS;
+    }
   }
 }
+
+
+
+
+
+
