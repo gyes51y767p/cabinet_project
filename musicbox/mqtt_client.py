@@ -5,6 +5,7 @@ from paho import mqtt
 import subprocess
 import os
 import signal
+import platform
 
 
 DOOR_CLOSED="closed"
@@ -44,7 +45,10 @@ def on_message(client, userdata, msg):
 def play_mp3(file_path):
     global door_state
 
+
     play_cmd=['afplay']
+    if platform.system()=='Linux':
+        play_cmd=['mpg123',"-q"]
     play_cmd.append(file_path)
     for _ in range(music_start_delay):
         time.sleep(1)
