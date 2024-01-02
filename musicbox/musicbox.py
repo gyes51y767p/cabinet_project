@@ -52,8 +52,8 @@ def play_mp3(file_path):
     play_cmd=['afplay']
     play_cmd.append(file_path)
     if platform.system()=='Linux':
-	#play_cmd=["mpg123","-q"]
-        play_cmd=f"mpg123 -q {file_path}"
+        play_cmd=["mpg123","-q",f"{file_path}"]
+        #play_cmd=f"mpg123 -q {file_path}"
     for _ in range(music_start_delay):
         time.sleep(1)
         if door_state==DOOR_CLOSED:
@@ -63,7 +63,7 @@ def play_mp3(file_path):
         #p=subprocess.Popen(play_cmd)
         #p=subprocess.Popen(play_cmd,stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         p=subprocess.Popen(play_cmd,
-		    shell=True, 
+		    #shell=True, 
 		    stdout=subprocess.PIPE, 
 		    stderr=subprocess.PIPE)
         #when the music is playing, check if the door is closed
