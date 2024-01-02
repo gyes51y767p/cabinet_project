@@ -6,6 +6,9 @@ import subprocess
 import os
 import signal
 import platform
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 DOOR_CLOSED="closed"
@@ -16,18 +19,18 @@ music_is_playing = False
 music_start_delay=5
 
 
-# setting callbacks for different events to see if it works, print the message etc.
+# setting callbacks for different events to see if it works, the message etc.
 def on_connect(client, userdata, flags, rc, properties=None):
-    print("CONNACK received with code %s." % rc)
+    logging.info("CONNACK received with code %s." % rc)
 
 # with this callback you can see if your publish was successful
 def on_publish(client, userdata, mid, properties=None):
-    print("mid: " + str(mid))
+    logging.info("mid: " + str(mid))
 
-# print which topic was subscribed to
+# which topic was subscribed to
 def on_subscribe(client, userdata, mid, granted_qos, properties=None):
-    print(f"client: {client}, userdata: {userdata}, mid: {mid}, granted_qos: {granted_qos}, properties: {properties}")
-    print("Subscribed: " + str(mid) + " " + str(granted_qos))
+    logging.info(f"client: {client}, userdata: {userdata}, mid: {mid}, granted_qos: {granted_qos}, properties: {properties}")
+    logging.info("Subscribed: " + str(mid) + " " + str(granted_qos))
 
 # when receiving a message, update the global variable
 def on_message(client, userdata, msg):
@@ -38,8 +41,8 @@ def on_message(client, userdata, msg):
         if new_door_state in [DOOR_CLOSED, DOOR_OPEN]:
             door_state = new_door_state
         else:
-            print("invalid payload")
-    print(f"topic: {msg.topic}, message: {new_door_state}")
+            logging.info("invalid payload")
+    logging.info(f"topic: {msg.topic}, message: {new_door_state}")
 
 #play the sound if the door is open for more than music_start_delay seconds
 def play_mp3(file_path):
@@ -47,23 +50,35 @@ def play_mp3(file_path):
 
 
     play_cmd=['afplay']
-    if platform.system()=='Linux':
-        play_cmd=['mpg123',"-q"]
     play_cmd.append(file_path)
+    if platform.system()=='Linux':
+	#play_cmd=["mpg123","-q"]
+        play_cmd=f"mpg123 -q {file_path}"
     for _ in range(music_start_delay):
         time.sleep(1)
         if door_state==DOOR_CLOSED:
             break
     while True and door_state==DOOR_OPEN:
-        p=subprocess.Popen(play_cmd,stdout=subprocess.PIPE)
+    	#p=subprocess.Popen(play_cmd,stdout=subprocess.PIPE)
+        #p=subprocess.Popen(play_cmd)
+        #p=subprocess.Popen(play_cmd,stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        p=subprocess.Popen(play_cmd,
+		    shell=True, 
+		    stdout=subprocess.PIPE, 
+		    stderr=subprocess.PIPE)
         #when the music is playing, check if the door is closed
         while p.poll() is None:
             time.sleep(0.5)
             if door_state==DOOR_CLOSED:
-                print(f"play_mp3 music stopping")
+                logging.info(f"play_mp3 music stopping")
                 os.kill(p.pid, signal.SIGTERM)
                 break
-    print(f"exit play_mp3")
+        if p.returncode == 0:
+            logging.info('Music player ended with success')
+        else:
+            logging.info('Music player ended with failure')
+        p.wait()
+    logging.info(f"exit play_mp3")
 
 # using MQTT version 5 here, for 3.1.1: MQTTv311, 3.1: MQTTv31
 # userdata is user defined data of any type, updated by user_data_set()
@@ -98,20 +113,20 @@ try:
             time.sleep(1)
             if door_state != last_door_state:
                 if music_is_playing and door_state == DOOR_CLOSED:
-                    print("door closed")
+                    logging.info("door closed")
                     if music_is_playing:
                         play_thread.join()
                         music_is_playing=False
                 elif door_state == DOOR_OPEN:
-                    print("door open")
+                    logging.info("door open")
                     if not music_is_playing:
                         play_thread = threading.Thread(target=play_mp3, args=(mp3_file,))
                         play_thread.start()
                         music_is_playing=True
                 else:
-                    print("invalid door state")
+                    logging.info("invalid door state")
                 last_door_state = door_state
 except Exception as e:
     client.loop_stop()
     client.disconnect()
-    print("exit")
+    logging.info("exit")
