@@ -21,8 +21,8 @@ const char mqtt_closed[]="closed";
 WiFiClientSecure net;
 MQTTClient client;
 
-#define DOOR_SENSOR 15
-#define DOOR_OPEN 1
+const gpio_num_t DOOR_SENSOR=GPIO_NUM_15;
+const boolean DOOR_OPEN=true;
 
 boolean door_is_open;															// currently read door state
 RTC_DATA_ATTR boolean last_door_is_open=false;		// what was the last known state of the door, retained during deep sleep mode
@@ -68,7 +68,9 @@ void mqtt_connect_and_send(boolean door_is_open) {
   connect();
 	client.loop();
   delay(10);  // <- fixes some issues with WiFi stability
+	Serial.println("Sending new door state.");
   send_door_state(door_is_open);
+	Serial.println("Send complete.");
 	client.loop();									// not sure if this is needed after the publish, but better safe then sorry
 
 }
@@ -79,6 +81,7 @@ void setup() {
 
   pinMode(DOOR_SENSOR, INPUT_PULLUP);
   door_is_open=digitalRead(DOOR_SENSOR)==DOOR_OPEN;
+	Serial.println("\n~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	print_door_state(door_is_open);
 
 	if (last_door_is_open != door_is_open) {
@@ -88,6 +91,7 @@ void setup() {
 	}
 
 	Serial.println("Going To Sleep");
+	esp_sleep_enable_ext0_wakeup(DOOR_SENSOR, !door_is_open);
 	esp_deep_sleep_start();
 
 }
