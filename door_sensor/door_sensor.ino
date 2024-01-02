@@ -10,49 +10,64 @@
 #include <WiFi.h>
 #include <MQTT.h>
 
-const char ssid[] = "LAK-FOXSPARROW";
-const char pass[] = "4793263208";
+// wifi config
+const char ssid[] = "LAK-FOXSPARROW";		// wifi ssid
+const char pass[] = "4793263208";				// wifi password
 
-// the keys to send to MQTT server
-const char mqtt_key[]="/door/pantry";
-const char mqtt_open[]="open";
-const char mqtt_closed[]="closed";
+// mqt config
+const char mqtt_broker_address[] = "61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud";
+const int mqtt_port = 8883;
+const char mqtt_user[] = "doorman";
+const char mqtt_password[] = "";
 
-WiFiClientSecure net;
-MQTTClient client;
+const char mqtt_key[]="/door/pantry";		// mtqq topic to publis
+const char mqtt_open[]="open";					// mqtt payload when door is open
+const char mqtt_closed[]="closed";			// mqtt payload when door is closed
 
-const gpio_num_t DOOR_SENSOR=GPIO_NUM_15;
-const boolean DOOR_OPEN=true;
+WiFiClientSecure net;										// wifi object
+MQTTClient client;											// mqtt object
 
-boolean door_is_open;															// currently read door state
+const gpio_num_t DOOR_SENSOR=GPIO_NUM_15;	// door sensor pin
+const int DOOR_OPEN=1;										// door pin state when door is OPEN 
+
+boolean door_is_open;															// currently read door state true=open, false=closed
 RTC_DATA_ATTR boolean last_door_is_open=false;		// what was the last known state of the door, retained during deep sleep mode
 
+/*
+** connect to wifi and mqtt
+*/
 void connect() {
 	// connect to the wifi
   Serial.print("checking wifi");
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    delay(1000);
+    delay(100);
   }
 
 	// connect to the MQTT
   Serial.print("\nconnecting MQTT");
   net.setInsecure();
-  while (!client.connect("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", "gyes51y767p", "@Mm5648970")) {
+  while (!client.connect(mqtt_broker_address, mqtt_user, mqtt_password)) {
     Serial.print(".");
-    delay(1000);
+    delay(100);
   }
   Serial.println("\nconnected!");
 }
 
+/*
+** Log the door state to the console
+*/
 void print_door_state(boolean door_is_open) {
     if (door_is_open == true) {
-      Serial.println("Door is open!");
+      Serial.println("Door is open");
     } else {
       Serial.println("Door is closed");
     }
 }
 
+/*
+** publish the door state to MQTT
+*/
 void send_door_state(int door_is_open) {
     if (door_is_open == true) {
       client.publish(mqtt_key, mqtt_open);
@@ -61,31 +76,47 @@ void send_door_state(int door_is_open) {
     }
 }
 
+/*
+** 	1) setup wifi and mqtt connections 
+**	2) connect to them both
+**	3) publish our new door state topic
+*/
 void mqtt_connect_and_send(boolean door_is_open) {
 
 	WiFi.begin(ssid, pass);
-  client.begin("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", 8883, net);
+  client.begin(mqtt_broker_address, mqtt_port, net);
   connect();
-	client.loop();
-  delay(10);  // <- fixes some issues with WiFi stability
-	Serial.println("Sending new door state.");
+	Serial.println("Queuing new door state");
   send_door_state(door_is_open);
-	Serial.println("Send complete.");
-	client.loop();									// not sure if this is needed after the publish, but better safe then sorry
+	Serial.println("Starting send");
+	while (!client.loop()) {}		// this statemsn, gets new messages, sends queued messages and re-connects if necessary
+	Serial.println("Send complete");
+  delay(10);  			// <- fixes some issues with WiFi stability
 
 }
+
+/*
+** 1) Read the state of the door 
+** 2) if and only if the state changed, publish the new state
+** 3) go back to sleep until the door state changes again
+**
+**	This routine relies on the wakup by a RTC (real time clock related pin) chaning state
+**	When this happens the esp32 wakes backup up and reads the pin and sends the state if changed
+*/
 
 void setup() {
   Serial.begin(115200);
   while (!Serial) {}
 
+	// setup and read the door sensor
   pinMode(DOOR_SENSOR, INPUT_PULLUP);
   door_is_open=digitalRead(DOOR_SENSOR)==DOOR_OPEN;
 	Serial.println("\n~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	print_door_state(door_is_open);
 
+	// if the pin state changed publish the new state
 	if (last_door_is_open != door_is_open) {
-		Serial.println("Door status changed, sending new state");
+		Serial.println("Door status changed");
 		mqtt_connect_and_send(door_is_open);
 		last_door_is_open=door_is_open;
 	}
@@ -96,8 +127,11 @@ void setup() {
 
 }
 
+/*
+** This code is never reached as machine is put in deep sleep at the end of the startup function
+*/
 void loop() {
-
+	/* NEVER REACHED */
 }
 
 
