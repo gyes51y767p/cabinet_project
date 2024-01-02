@@ -1,3 +1,5 @@
+#This script is running on RPI Bookworm and Bullseye 64-bit OS, python 3.9
+#The command to play sound "mpg123" is not compatible with Python 3.11 which causes a "jack"-related error
 import threading
 import time
 import paho.mqtt.client as paho
@@ -10,7 +12,8 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-
+user="doorman"
+pswd="!@#$1Sastupidphrase"
 DOOR_CLOSED="closed"
 DOOR_OPEN="open"
 door_state = DOOR_CLOSED
@@ -18,16 +21,11 @@ last_door_state = DOOR_CLOSED
 music_is_playing = False
 music_start_delay=5
 
-
 # setting callbacks for different events to see if it works, the message etc.
 def on_connect(client, userdata, flags, rc, properties=None):
     logging.info("CONNACK received with code %s." % rc)
 
-# with this callback you can see if your publish was successful
-def on_publish(client, userdata, mid, properties=None):
-    logging.info("mid: " + str(mid))
-
-# which topic was subscribed to
+# which topic was subscribed to, only print the first time that script run
 def on_subscribe(client, userdata, mid, granted_qos, properties=None):
     logging.info(f"client: {client}, userdata: {userdata}, mid: {mid}, granted_qos: {granted_qos}, properties: {properties}")
     logging.info("Subscribed: " + str(mid) + " " + str(granted_qos))
@@ -37,7 +35,7 @@ def on_message(client, userdata, msg):
     global door_state
     new_door_state = msg.payload.decode('utf-8')
 
-    if msg.topic == "/door1":
+    if msg.topic == "/door/pantry":
         if new_door_state in [DOOR_CLOSED, DOOR_OPEN]:
             door_state = new_door_state
         else:
@@ -48,22 +46,16 @@ def on_message(client, userdata, msg):
 def play_mp3(file_path):
     global door_state
 
-
     play_cmd=['afplay']
     play_cmd.append(file_path)
     if platform.system()=='Linux':
         play_cmd=["mpg123","-q",f"{file_path}"]
-        #play_cmd=f"mpg123 -q {file_path}"
     for _ in range(music_start_delay):
         time.sleep(1)
         if door_state==DOOR_CLOSED:
             break
     while True and door_state==DOOR_OPEN:
-    	#p=subprocess.Popen(play_cmd,stdout=subprocess.PIPE)
-        #p=subprocess.Popen(play_cmd)
-        #p=subprocess.Popen(play_cmd,stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         p=subprocess.Popen(play_cmd,
-		    #shell=True, 
 		    stdout=subprocess.PIPE, 
 		    stderr=subprocess.PIPE)
         #when the music is playing, check if the door is closed
@@ -89,23 +81,17 @@ client.on_connect = on_connect
 # enable TLS for secure connection
 client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
 # set username and password
-client.username_pw_set("gyes51y767p", "@Mm5648970")
+client.username_pw_set(user, pswd)
 # connect to HiveMQ Cloud on port 8883 (default for MQTT)
 client.connect("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", 8883)
 
 # setting callbacks, use separate functions like above for better visibility
 client.on_subscribe = on_subscribe
 client.on_message = on_message
-#client.on_publish = on_publish
 
-client.subscribe("/door1", qos=1)
-
-# a single publish, this can also be done in loops, etc.
-# client.publish("encyclopedia/temperature", payload="hot", qos=1)
-
+client.subscribe("/door/pantry", qos=1)
 # loop_forever for simplicity, here you need to stop the loop manually
 # you can also use loop_start and loop_stop
-
 client.loop_start()
 mp3_file = "sound1.mp3"
 try:
@@ -115,7 +101,7 @@ try:
                 if music_is_playing and door_state == DOOR_CLOSED:
                     logging.info("door closed")
                     if music_is_playing:
-                        play_thread.join()
+                        play_thread.join() # to kill the music if it is playing 
                         music_is_playing=False
                 elif door_state == DOOR_OPEN:
                     logging.info("door open")
