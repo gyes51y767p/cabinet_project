@@ -49,7 +49,7 @@ def play_mp3(file_path):
     play_cmd=['afplay']
     play_cmd.append(file_path)
     if platform.system()=='Linux':
-        play_cmd=["mpg123","-q",f"{file_path}"]
+        play_cmd=["mpg123","-q","-o","alsa:hw:1,0",f"{file_path}"]
     for _ in range(music_start_delay):
         time.sleep(1)
         if door_state==DOOR_CLOSED:
