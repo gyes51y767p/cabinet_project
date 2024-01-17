@@ -25,18 +25,18 @@ doors_Object_List = {}
 
 door_configs={
     "pantry": {
-        "door_state": DOOR_CLOSED,
-        "initial_delay": 30,
+        "door_state": DOOR_CLOSED, #do we need this?
+        "initial_delay": 30,#do we need this?
         "music_list": [
-            {"music_file": "gentle_pantry.mp3",
-                 "repeat_times": 3,
-                 "volume": "-6000",
-                 "delay_to_next": 20 },
-            {"music_file": "pantry_smooth.mp3",
+            {"music_file_path": "gentle_pantry.mp3",
+                 "repeat_times": 3,#do we need this?
+                 "volume": "-6000",#do we need this?
+                 "delay_to_next": 20 },#do we need this?
+            {"music_file_path": "pantry_smooth.mp3",
                  "repeat_times": 1,
                  "volume": "-10000",
                  "delay_to_next": 20},
-            {"music_file": "pantry_furious.mp3",
+            {"music_file_path": "pantry_furious.mp3",
                  "repeat_times": 0,
                  "volume": "-20000" ,
                  "delay_to_next": 20 }
@@ -47,15 +47,15 @@ door_configs={
         "door_state": DOOR_CLOSED,#no need
         "initial_delay": 30,
         "music_list": [
-            {"music_file": "gentle_sauce.mp3",
+            {"music_file_path": "gentle_sauce.mp3",
                  "repeat_times": 3,
                  "volume": "-6000",
                  "delay_to_next": 20},
-            {"music_file": "sauce_smooth.mp3",
+            {"music_file_path": "sauce_smooth.mp3",
                  "repeat_times": 1,
                  "volume": "-10000",
                  "delay_to_next": 20},
-            {"music_file": "sauce_furious.mp3",
+            {"music_file_path": "sauce_furious.mp3",
                  "repeat_times": 0,
                  "volume": "-20000",
                  "delay_to_next": 20 }
@@ -118,9 +118,7 @@ def play_mp3(cur_door):
     play_cmd = ['afplay']
     # play_cmd.append(f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file']}")
     # test_cmd1=['afplay',f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file']}"]
-    #
     # test_cmd2=['afplay',f"{os.path.abspath('sounds')}/{cur_door.door_music_files[1]['music_file']}"]
-    #will need to move this into while block to update play command
     if platform.system() == 'Linux':
         play_cmd = ["mpg123", "-q", "-f", "-2000", "-o", "alsa:hw:1,0"]
     for i in range(music_start_delay):
@@ -132,10 +130,11 @@ def play_mp3(cur_door):
         total_time=cur_door.door_is_open_total_time-cur_door.door_is_open_that_moment
         logging.info(f"total time: {total_time}")
         time.sleep(1)
+        #there are three if statement  may create the function for it to handle the total time and have diffenct output and music
         if total_time >6 and total_time<20 : #play gentle sound
             logging.info(f"playing sound now and the time is {total_time}")
-            if f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file']}" not in play_cmd:
-                play_cmd.append(f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file']}")
+            if f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file_path']}" not in play_cmd:
+                play_cmd.append(f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file_path']}")
             logging.info(f"play_cmd: {play_cmd}")
             p = subprocess.Popen(play_cmd,# remvoeber change to play_cmd for rpi
                                  stdout=subprocess.PIPE,
@@ -155,7 +154,7 @@ def play_mp3(cur_door):
             p.wait()
         if total_time >=20 and total_time <40 :
             play_cmd=play_cmd[:-1]#any better way?
-            play_cmd.append(f"{os.path.abspath('sounds')}/{cur_door.door_music_files[1]['music_file']}")
+            play_cmd.append(f"{os.path.abspath('sounds')}/{cur_door.door_music_files[1]['music_file_path']}")
             logging.info(f"playing sound now  and the time is {total_time}")
             p = subprocess.Popen(play_cmd,
                                  stdout=subprocess.PIPE,
@@ -246,10 +245,10 @@ try:
                             cur_door.door_music_thread.join()
                             cur_door.door_music_is_playing=False
                     elif cur_door.door_state==DOOR_OPEN:
-                        cur_door.door_is_open_that_moment = time.time()
+                        cur_door.door_is_open_that_moment = time.time()# update it when the door is open so the time can reset
                         logging.info(f"{cur_door.door_name} open")
                         if not cur_door.door_music_is_playing:
-                            cur_door.door_music_thread = threading.Thread(target=play_mp3, args=(cur_door,))   #gentle musci first cur_door.door_music_file[0]["music_file"]
+                            cur_door.door_music_thread = threading.Thread(target=play_mp3, args=(cur_door,))
                             cur_door.door_music_thread.start()
                             cur_door.door_music_is_playing=True
                     else:
