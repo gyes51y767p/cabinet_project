@@ -113,6 +113,7 @@ class Door:
             if platform.system() == 'Linux':
                 play_cmd = ["mpg123", "-q", "-f", "-o", "alsa:hw:1,0", self.door_music_files[self.music_index]["volume"],
                             f"{os.path.abspath('sounds')}/{self.door_music_files[self.music_index]['music_file_path']}"]
+                logging.info(f"play_cmd: {play_cmd}")
             self.music_plays += 1
             if self.music_plays >= self.door_music_files[self.music_index]["repeat_times"]:
                 self.music_plays = 0
