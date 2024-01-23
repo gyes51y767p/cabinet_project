@@ -16,53 +16,48 @@ user="doorman"
 pswd="!@#$1Sastupidphrase"
 DOOR_CLOSED="closed"
 DOOR_OPEN="open"
-# door_state = DOOR_CLOSED
-# last_door_state = DOOR_CLOSED
-# music_is_playing = False
 music_start_delay=5
-# music_sources_path="sounds"
 doors_Object_List = {}
+screaming_is_on=False
+
 
 door_configs={
     "pantry": {
         "door_state": DOOR_CLOSED, #do we need this?
-        "initial_delay": 30,#do we need this?
         "music_list": [
             {"music_file_path": "gentle_pantry.mp3",
-                 "repeat_times": 3,#do we need this?
+                 "repeat_times": 2,#do we need this?
                  "volume": "-6000",#do we need this?
-                 "delay_to_next": 20 },#do we need this?
+                 "delay_to_next": 3 },#do we need this?
             {"music_file_path": "pantry_smooth.mp3",
-                 "repeat_times": 1,
+                 "repeat_times": 2,
                  "volume": "-10000",
-                 "delay_to_next": 20},
+                 "delay_to_next": 3},
             {"music_file_path": "pantry_furious.mp3",
-                 "repeat_times": 0,
+                 "repeat_times": 2,
                  "volume": "-20000" ,
-                 "delay_to_next": 20 }
+                 "delay_to_next": 3 }
         ]
     },
 
     "sauces": {
         "door_state": DOOR_CLOSED,#no need
-        "initial_delay": 30,
         "music_list": [
             {"music_file_path": "gentle_sauce.mp3",
-                 "repeat_times": 3,
+                 "repeat_times": 2,
                  "volume": "-6000",
-                 "delay_to_next": 20},
+                 "delay_to_next": 3},
             {"music_file_path": "sauce_smooth.mp3",
-                 "repeat_times": 1,
+                 "repeat_times": 2,
                  "volume": "-10000",
-                 "delay_to_next": 20},
+                 "delay_to_next": 3},
             {"music_file_path": "sauce_furious.mp3",
-                 "repeat_times": 0,
+                 "repeat_times": 2,
                  "volume": "-20000",
-                 "delay_to_next": 20 }
+                 "delay_to_next": 3 }
         ]
     }
 }
-
 class Door:
     def __init__(self, door_name, new_door_state,door_info_from_config):
         self.door_name = door_name
@@ -71,11 +66,12 @@ class Door:
         self.door_music_is_playing = False
 
         # Music stuff
-        self.music_index=0                                  # what is the current song
-        self.music_plays=0                                  # how many times have we played the current song
-        self.next_play_time=0                               # when to play the next song
         self.door_music_files = door_info_from_config["music_list"]
-
+        self.music_index = 0  # what is the current song
+        self.music_plays =self.door_music_files[0]["repeat_times"]  # how many times have we played the current song
+        self.next_play_time = self.door_music_files[0]["delay_to_next"]  # how long to wait before playing the next song
+        self.volume = self.door_music_files[0]["volume"]
+        self.music_file_path= self.door_music_files[0]["music_file_path"]
         # door state stuff
         self.door_music_thread = None
         self.door_is_open_that_moment=time.time()
@@ -86,17 +82,24 @@ class Door:
 
     def update(self):
         if self.door_state != self.door_last_door_state:
+            logging.info(f"in update function ")
             if self.door_music_is_playing and self.door_state == DOOR_CLOSED:
                 logging.info(f"{self.door_name} closed")
                 if self.door_music_is_playing:
                     self.door_music_thread.join()
                     self.door_music_is_playing = False
             elif self.door_state == DOOR_OPEN:
+                logging.info(f"{self.door_name} is opening")
                 self.door_is_open_that_moment = time.time()  # update it when the door is open so the time can reset
-                logging.info(f"{self.door_name} open")
+                self.music_index = 0  # what is the current song
+                self.music_plays = self.door_music_files[0]["repeat_times"]
+                self.next_play_time = self.door_music_files[0]["delay_to_next"]  # how long to wait before playing the next song
+                self.volume = self.door_music_files[0]["volume"]
+                self.music_file_path = self.door_music_files[0]["music_file_path"]
                 if not self.door_music_is_playing:
                     self.door_music_thread = threading.Thread(target=self.play_mp3)
                     self.door_music_thread.start()
+                    logging.info(f"play_mp3 thread started")
                     self.door_music_is_playing = True
             else:
                 logging.info(f"invalid door state")
@@ -104,58 +107,48 @@ class Door:
 
     def which_song_to_play(self):
         play_cmd=None
-        self.door_is_open_total_time = time.time()
-        total_time = self.door_is_open_total_time - self.door_is_open_that_moment
-        time.sleep(1)
-
-        if total_time > self.door_music_files[self.music_index]["delay_to_next"]:
-            play_cmd = ['afplay', f"{os.path.abspath('sounds')}/{self.door_music_files[self.music_index]['music_file_path']}"]
+        if not screaming_is_on:
+            play_cmd = ['afplay',  f"{os.path.abspath('sounds')}/{self.music_file_path}"]
             if platform.system() == 'Linux':
-                play_cmd = ["mpg123", "-q", "-f", "-o", "alsa:hw:1,0", self.door_music_files[self.music_index]["volume"],
-                            f"{os.path.abspath('sounds')}/{self.door_music_files[self.music_index]['music_file_path']}"]
-                logging.info(f"play_cmd: {play_cmd}")
-            self.music_plays += 1
-            if self.music_plays >= self.door_music_files[self.music_index]["repeat_times"]:
-                self.music_plays = 0
+                play_cmd = ["mpg123", "-q", "-f",self.volume, "-o", "alsa:hw:1,0",
+                            f"{os.path.abspath('sounds')}/{self.music_file_path}"]
+            self.music_plays -= 1
+            if self.music_plays <= 0:
                 self.music_index += 1
-            if self.music_index >= len(self.door_music_files):
-                self.music_index = 0
+                if self.music_index >= len(self.door_music_files):
+                    self.music_index = 0
+                self.music_plays = self.door_music_files[self.music_index]["repeat_times"]
+                self.next_play_time = self.door_music_files[self.music_index]["delay_to_next"]
+                self.volume = self.door_music_files[self.music_index]["volume"]
+                self.music_file_path = self.door_music_files[self.music_index]["music_file_path"]
+
         return play_cmd
 
     def play_mp3(self):
-
-        for i in range(music_start_delay):
-            time.sleep(1)
-            if self.door_state == DOOR_CLOSED:
-                break
+        global screaming_is_on
         while True and self.door_state == DOOR_OPEN:
-            play_cmd = self.which_song_to_play()
-            # cur_door.door_is_open_total_time=time.time()
-            # total_time=cur_door.door_is_open_total_time-cur_door.door_is_open_that_moment
-            # time.sleep(1)
-            # #there are three if statement  may create the function for it to handle the total time and have diffenct output and music
-            # if total_time >6 and total_time<20 : #play gentle sound
-            #     logging.info(f"playing sound now and the time is {total_time}")
-            #     if f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file_path']}" not in play_cmd:
-            #         play_cmd.append(f"{os.path.abspath('sounds')}/{cur_door.door_music_files[0]['music_file_path']}")
-            #     logging.info(f"play_cmd: {play_cmd}")
-            if  play_cmd:
-                p = subprocess.Popen(play_cmd,  # remvoeber change to play_cmd for rpi
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
-                # when the music is playing, check if the door is closed
-                while p.poll() is None:
-                    logging.info(f"playing sound now the door is open for more than 6 less than 20")
-                    time.sleep(2)  # was 0.5 in old code
-                    if self.door_state == DOOR_CLOSED:
-                        logging.info(f"play_mp3 music stopping")
-                        os.kill(p.pid, signal.SIGTERM)
-                        break
-                if p.returncode == 0:
-                    logging.info('Music player ended with success')
-                else:
-                    logging.info('Music player ended with failure')
-                p.wait()
+            cur_time = time.time()
+            if cur_time > self.door_is_open_that_moment + self.next_play_time:
+                play_cmd = self.which_song_to_play()
+                if not screaming_is_on:
+                    p = subprocess.Popen(play_cmd,  # remvoeber change to play_cmd for rpi
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+                    screaming_is_on=True                 # when the music is playing, check if the door is closed
+                    while p.poll() is None:
+                        time.sleep(0.5)  # was 0.5 in old code
+                        if self.door_state == DOOR_CLOSED:
+                            logging.info(f"play_mp3 music stopping")
+                            os.kill(p.pid, signal.SIGTERM)
+                            break
+                    if p.returncode == 0:
+                        logging.info('Music player ended with success')
+                    else:
+                        logging.info('Music player ended with failure')
+                    p.wait()
+                    screaming_is_on = False
+                    time.sleep(self.next_play_time)
+
         logging.info(f"exit play_mp3")
 
     def update_door_state(self, new_door_state):
@@ -217,22 +210,7 @@ try:
         for each_door in doors_Object_List:
             cur_door=doors_Object_List[each_door] #extract the door object
             cur_door.update()
-            # if cur_door.door_state!=cur_door.door_last_door_state:
-            #     if cur_door.door_music_is_playing and cur_door.door_state==DOOR_CLOSED:
-            #         logging.info(f"{cur_door.door_name} closed")
-            #         if cur_door.door_music_is_playing:
-            #             cur_door.door_music_thread.join()
-            #             cur_door.door_music_is_playing=False
-            #     elif cur_door.door_state==DOOR_OPEN:
-            #         cur_door.door_is_open_that_moment = time.time()# update it when the door is open so the time can reset
-            #         logging.info(f"{cur_door.door_name} open")
-            #         if not cur_door.door_music_is_playing:
-            #             cur_door.door_music_thread = threading.Thread(target=play_mp3, args=(cur_door,))
-            #             cur_door.door_music_thread.start()
-            #             cur_door.door_music_is_playing=True
-            #     else:
-            #         logging.info(f"invalid door state")
-            #     cur_door.door_last_door_state=cur_door.door_state
+
 
 
 except Exception as e:
