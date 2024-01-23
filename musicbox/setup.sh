@@ -1,5 +1,7 @@
 sudo apt-get install mpg123
 sudo apt-get install supervisor
 
-sudo cp supervisord/musicbox.conf /etc/supervisor/conf.d/
+amixer set Master 80%
+
+sudo cp supervisord/*.conf /etc/supervisor/conf.d/
 sudo supervisorctl reload
