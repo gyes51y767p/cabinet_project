@@ -27,16 +27,16 @@ door_configs={
         "music_list": [
             {"music_file_path": "gentle_pantry.mp3",
                  "repeat_times": 2,#do we need this?
-                 "volume": "-6000",#do we need this?
-                 "delay_to_next": 3 },#do we need this?
+                 "volume": "-10000",#do we need this?
+                 "delay_to_next": 60 },#do we need this?
             {"music_file_path": "pantry_smooth.mp3",
                  "repeat_times": 2,
-                 "volume": "-10000",
-                 "delay_to_next": 3},
+                 "volume": "-20000",
+                 "delay_to_next": 45},
             {"music_file_path": "pantry_furious.mp3",
                  "repeat_times": 2,
-                 "volume": "-20000" ,
-                 "delay_to_next": 3 }
+                 "volume": "-30000" ,
+                 "delay_to_next": 30 }
         ]
     },
 
@@ -46,15 +46,15 @@ door_configs={
             {"music_file_path": "gentle_sauce.mp3",
                  "repeat_times": 2,
                  "volume": "-6000",
-                 "delay_to_next": 3},
+                 "delay_to_next": 60},
             {"music_file_path": "sauce_smooth.mp3",
                  "repeat_times": 2,
                  "volume": "-10000",
-                 "delay_to_next": 3},
+                 "delay_to_next": 45},
             {"music_file_path": "sauce_furious.mp3",
                  "repeat_times": 2,
                  "volume": "-20000",
-                 "delay_to_next": 3 }
+                 "delay_to_next": 30 }
         ]
     }
 }
