@@ -7,7 +7,7 @@ The goal is to create a real-time notification to remind the lsat person who lef
 
 ## Table of contents
 1. [Getting Started](#getting-started)
-2. [Project material and process images](#project-images)
+2. [Final product](#project-images)
 3. [testing123](#testing123)
 
 
@@ -20,12 +20,5 @@ git clone git@github.com:gyes51y767p/cabinet_project.git
 ```
 
 # Project images <a name="project-images"></a>
-
-will is acome to caherea
-
-
-# Project images 3ertgfderf
-will is acome to caherea
-
-# Project images 3ertgfderf<name = "testing123"></a>
-will is acome to caherea
+![final view.jpg](musicbox%2Fworking_process_images%2Ffinal%20view.jpg)
+[more images](musicbox%2Fworking_process_images)
