@@ -12,7 +12,7 @@
 
 // wifi config
 const char ssid[] = "LAK-FOXSPARROW";		// wifi ssid
-const char pass[] = "4793263208";				// wifi password
+const char pass[] = "";				// wifi password
 
 // mqt config
 const char mqtt_broker_address[] = "61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud";

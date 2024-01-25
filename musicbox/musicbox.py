@@ -13,22 +13,22 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 user="doorman"
-pswd="!@#$1Sastupidphrase"
+pswd=""
 DOOR_CLOSED="closed"
 DOOR_OPEN="open"
 music_start_delay=5
-doors_Object_List = {}
+doors_object_dict = {}
 screaming_is_on=False
-
+client=None
 
 door_configs={
     "pantry": {
-        "door_state": DOOR_CLOSED, #do we need this?
+        "door_state": DOOR_CLOSED,
         "music_list": [
             {"music_file_path": "gentle_pantry.mp3",
-                 "repeat_times": 2,#do we need this?
-                 "volume": "-10000",#do we need this?
-                 "delay_to_next": 60 },#do we need this?
+                 "repeat_times": 2,
+                 "volume": "-10000",
+                 "delay_to_next": 60 },
             {"music_file_path": "pantry_smooth.mp3",
                  "repeat_times": 2,
                  "volume": "-20000",
@@ -41,7 +41,7 @@ door_configs={
     },
 
     "sauces": {
-        "door_state": DOOR_CLOSED,#no need
+        "door_state": DOOR_CLOSED,
         "music_list": [
             {"music_file_path": "gentle_sauce.mp3",
                  "repeat_times": 2,
@@ -59,6 +59,10 @@ door_configs={
     }
 }
 class Door:
+    """
+        Doors are mqtt objects that we are listening for we track their open/closed status
+        When open, we set timers and play a bit of reminder audio of the door state
+        """
     def __init__(self, door_name, new_door_state,door_info_from_config):
         self.door_name = door_name
         self.door_state = new_door_state
@@ -77,9 +81,6 @@ class Door:
         self.door_is_open_that_moment=time.time()
         self.door_is_open_total_time=time.time()
 
-    def run(self, current_time):
-        pass
-
     def update(self):
         if self.door_state != self.door_last_door_state:
             logging.info(f"in update function ")
@@ -90,14 +91,14 @@ class Door:
                     self.door_music_is_playing = False
             elif self.door_state == DOOR_OPEN:
                 logging.info(f"{self.door_name} is opening")
-                self.door_is_open_that_moment = time.time()  # update it when the door is open so the time can reset
-                self.music_index = 0  # what is the current song
+                self.door_is_open_that_moment = time.time()                     # update it when the door is open so the time can reset
+                self.music_index = 0                                            # start over from 0
                 self.music_plays = self.door_music_files[0]["repeat_times"]
                 self.next_play_time = self.door_music_files[0]["delay_to_next"]  # how long to wait before playing the next song
                 self.volume = self.door_music_files[0]["volume"]
                 self.music_file_path = self.door_music_files[0]["music_file_path"]
                 if not self.door_music_is_playing:
-                    self.door_music_thread = threading.Thread(target=self.play_mp3)
+                    self.door_music_thread = threading.Thread(target=self.play_mp3) #start the thread so it doesnt block the main thread
                     self.door_music_thread.start()
                     logging.info(f"play_mp3 thread started")
                     self.door_music_is_playing = True
@@ -121,7 +122,6 @@ class Door:
                 self.next_play_time = self.door_music_files[self.music_index]["delay_to_next"]
                 self.volume = self.door_music_files[self.music_index]["volume"]
                 self.music_file_path = self.door_music_files[self.music_index]["music_file_path"]
-
         return play_cmd
 
     def play_mp3(self):
@@ -131,24 +131,23 @@ class Door:
             if cur_time > self.door_is_open_that_moment + self.next_play_time:
                 play_cmd = self.which_song_to_play()
                 if not screaming_is_on:
-                    p = subprocess.Popen(play_cmd,  # remvoeber change to play_cmd for rpi
+                    p = subprocess.Popen(play_cmd,
                                          stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE)
-                    screaming_is_on=True                 # when the music is playing, check if the door is closed
-                    while p.poll() is None:
-                        time.sleep(0.5)  # was 0.5 in old code
+                    screaming_is_on=True
+                    while p.poll() is None:                         #while the music is playing at background
+                        time.sleep(0.5)
                         if self.door_state == DOOR_CLOSED:
                             logging.info(f"play_mp3 music stopping")
                             os.kill(p.pid, signal.SIGTERM)
                             break
-                    if p.returncode == 0:
+                    if p.returncode == 0:                            #if the music is played successfully
                         logging.info('Music player ended with success')
                     else:
                         logging.info('Music player ended with failure')
                     p.wait()
                     screaming_is_on = False
-                    time.sleep(self.next_play_time)
-
+                    time.sleep(self.next_play_time)                 #wait for the next song to play
         logging.info(f"exit play_mp3")
 
     def update_door_state(self, new_door_state):
@@ -169,51 +168,61 @@ def on_message(client, userdata, msg):
     # global door_state
     new_door_state = msg.payload.decode('utf-8')
     door_name=msg.topic.split("/")[-1]
-    if door_name not in doors_Object_List:
-        doors_Object_List[door_name]=Door(door_name,new_door_state,door_configs[door_name])
+    if door_name not in doors_object_dict:
+        doors_object_dict[door_name]=Door(door_name, new_door_state, door_configs[door_name])
         logging.info(f"door_name: {door_name} appended to doors_Object_List")
-
     else:
-        doors_Object_List[door_name].update_door_state(new_door_state)
+        doors_object_dict[door_name].update_door_state(new_door_state)
         logging.info(f"door_name: {door_name} updated to {new_door_state}")
 
-#play the sound if the door is open for more than music_start_delay seconds
 
 
+def setup_mqtt():
+    """
+    Establish connection ot MQTT broker and subscribe to our topics /door/...
+    :return: None
+    """
 
-# using MQTT version 5 here, for 3.1.1: MQTTv311, 3.1: MQTTv31
-# userdata is user defined data of any type, updated by user_data_set()
-# client_id is the given name of the client
-client = paho.Client(client_id="", userdata=None, protocol=paho.MQTTv5)
-client.on_connect = on_connect
+    client = paho.Client(client_id="", userdata=None, protocol=paho.MQTTv5)
+    client.on_connect = on_connect
 
-# enable TLS for secure connection
-client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
-# set username and password
-client.username_pw_set(user, pswd)
-# connect to HiveMQ Cloud on port 8883 (default for MQTT)
-client.connect("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", 8883)
+    # enable TLS for secure connection
+    client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
+    # set username and password
+    client.username_pw_set(user, pswd)
+    # connect to HiveMQ Cloud on port 8883 (default for MQTT)
+    client.connect("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", 8883)
 
-# setting callbacks, use separate functions like above for better visibility
-client.on_subscribe = on_subscribe
-client.on_message = on_message
+    # setting callbacks, use separate functions like above for better visibility
+    client.on_subscribe = on_subscribe
+    client.on_message = on_message
 
-client.subscribe("/door/pantry", qos=1)
-client.subscribe("/door/sauces", qos=1)
+    client.subscribe("/door/pantry", qos=1)
+    client.subscribe("/door/sauces", qos=1)
 
-# loop_forever for simplicity, here you need to stop the loop manually
-# you can also use loop_start and loop_stop
-client.loop_start()
-try:
+    # loop_forever for simplicity, here you need to stop the loop manually
+    # you can also use loop_start and loop_stop
+    client.loop_start()
+
+def main()->None:
+    """
+        Primary function, set up a few global environment things
+        Repeatedly loop over the list of door and update their state
+        causing music to play and stop as the door state changes over time.
+        :return:
+        """
+    setup_mqtt()                                # initialize the mqtt environ/package
+
     while True:
         time.sleep(1)
-        for each_door in doors_Object_List:
-            cur_door=doors_Object_List[each_door] #extract the door object
+        for each_door in doors_object_dict:
+            cur_door=doors_object_dict[each_door] #extract the door object
             cur_door.update()
 
-
-
-except Exception as e:
-    client.loop_stop()
-    client.disconnect()
-    logging.info("exit")
+if __name__== '__main__':
+    try:
+        main()
+    except Exception as e:
+        client.loop_stop()
+        client.disconnect()
+        logging.info("exit")
