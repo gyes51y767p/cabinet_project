@@ -30,6 +30,10 @@ To clone the repository, run the following command:
 git clone git@github.com:gyes51y767p/cabinet_project.git
 ```
 # Quick Start <a name="quick_start"></a>
+Recommend Python 3.9 or higher here. 
+There is no expectation that it won't work with future versions. 
+We need a version of Python that is compatible with the paho.mqtt library.
+
 For ESP32:
 * In this project, we use [HiveMQ](https://www.hivemq.com/) for MQTT server
 * Use the scirpt for esp32 form [here](door_sensor/door_sensor.ino)

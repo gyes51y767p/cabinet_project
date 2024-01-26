@@ -11,13 +11,13 @@
 #include <MQTT.h>
 
 // wifi config
-const char ssid[] = "LAK-FOXSPARROW";		// wifi ssid
+const char ssid[] = "";		// wifi ssid
 const char pass[] = "";				// wifi password
 
 // mqt config
 const char mqtt_broker_address[] = "61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud";
 const int mqtt_port = 8883;
-const char mqtt_user[] = "doorman";
+const char mqtt-broker-user[] = "doorman";
 const char mqtt_password[] = "";
 
 const char mqtt_key[]="/door/sauces";		// mtqq topic to publis
@@ -47,7 +47,7 @@ void connect() {
 	// connect to the MQTT
   Serial.print("\nconnecting MQTT");
   net.setInsecure();
-  while (!client.connect(mqtt_broker_address, mqtt_user, mqtt_password)) {
+  while (!client.connect(mqtt_broker_address, mqtt-broker-user, mqtt_password)) {
     Serial.print(".");
     delay(100);
   }

@@ -9,11 +9,11 @@ import os
 import signal
 import platform
 import logging
+import argparse
+import configparser
 
 logging.basicConfig(level=logging.DEBUG)
 
-user="doorman"
-pswd=""
 DOOR_CLOSED="closed"
 DOOR_OPEN="open"
 music_start_delay=5
@@ -58,6 +58,8 @@ door_configs={
         ]
     }
 }
+
+
 class Door:
     """
         Doors are mqtt objects that we are listening for we track their open/closed status
@@ -153,15 +155,17 @@ class Door:
     def update_door_state(self, new_door_state):
             self.door_state = new_door_state
 
-# setting callbacks for different events to see if it works, the message etc.
 
+# setting callbacks for different events to see if it works, the message etc.
 def on_connect(client, userdata, flags, rc, properties=None):
     logging.info("CONNACK received with code %s." % rc)
+
 
 # which topic was subscribed to, only print the first time that script run
 def on_subscribe(client, userdata, mid, granted_qos, properties=None):
     logging.info(f"client: {client}, userdata: {userdata}, mid: {mid}, granted_qos: {granted_qos}, properties: {properties}")
     logging.info("Subscribed: " + str(mid) + " " + str(granted_qos))
+
 
 # when receiving a message, update the global variable
 def on_message(client, userdata, msg):
@@ -176,22 +180,20 @@ def on_message(client, userdata, msg):
         logging.info(f"door_name: {door_name} updated to {new_door_state}")
 
 
-
-def setup_mqtt():
+def setup_mqtt(config):
     """
     Establish connection ot MQTT broker and subscribe to our topics /door/...
     :return: None
     """
-
     client = paho.Client(client_id="", userdata=None, protocol=paho.MQTTv5)
     client.on_connect = on_connect
 
     # enable TLS for secure connection
     client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
     # set username and password
-    client.username_pw_set(user, pswd)
+    client.username_pw_set(config["default"]["mqtt_host_user"], config["default"]["mqtt_host_pswd"])
     # connect to HiveMQ Cloud on port 8883 (default for MQTT)
-    client.connect("61850993d7e340d7b170bcd12078ef88.s2.eu.hivemq.cloud", 8883)
+    client.connect(config["default"]["mqtt_host"], 8883)
 
     # setting callbacks, use separate functions like above for better visibility
     client.on_subscribe = on_subscribe
@@ -204,6 +206,14 @@ def setup_mqtt():
     # you can also use loop_start and loop_stop
     client.loop_start()
 
+
+def get_args():
+    parser = argparse.ArgumentParser(prog='cache.py')
+    parser.add_argument("-i", "--ini", required=True)
+    args = parser.parse_args()
+    return args
+
+
 def main()->None:
     """
         Primary function, set up a few global environment things
@@ -211,13 +221,20 @@ def main()->None:
         causing music to play and stop as the door state changes over time.
         :return:
         """
-    setup_mqtt()                                # initialize the mqtt environ/package
+    args=get_args()
+    ini_file=args.ini
+
+    config = configparser.ConfigParser()
+    config.read(ini_file)
+
+    setup_mqtt(config)         # initialize the mqtt environ/package
 
     while True:
         time.sleep(1)
         for each_door in doors_object_dict:
             cur_door=doors_object_dict[each_door] #extract the door object
             cur_door.update()
+
 
 if __name__== '__main__':
     try:
