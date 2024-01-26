@@ -10,7 +10,8 @@ upon receiving MQTT notifications.
 This project came to life because of our quirky roommate
 habits. The mission? Cook up a clever notification system 
 to remind the last person to close those pesky cabinet doors.
-Let them become a better <span style="font-size: 30px;">Person</span> again!
+Let them become a better <span style="font-family:Papyrus; font-size:30px; color:green;">PERSON!</span> again!
+
 
 # Table of contents
 1. [Getting Started](#getting-started)
@@ -31,14 +32,14 @@ git clone git@github.com:gyes51y767p/cabinet_project.git
 # Quick Start <a name="quick_start"></a>
 For ESP32:
 * In this project, we use [HiveMQ](https://www.hivemq.com/) for MQTT server
-* Download the scirpt for esp32 form [here](door_sensor/door_sensor.ino)
+* Use the scirpt for esp32 form [here](door_sensor/door_sensor.ino)
 * Open the script in Arduino IDE and edit the personal password and subscribe/publish topic
 * Upload the script to ESP32
 * Connect the ESP32 to the magnetic switch and power supply
 * Done!
 
 For Raspberry Pi:
-* Download the script for Raspberry Pi from [here](musicbox/musicbox.py)
+* Use the script for Raspberry Pi from [here](musicbox/musicbox.py)
 * Open terminal to musicbox folder
 * Create a python 3.9 virtual environment
 ```bash
@@ -48,7 +49,7 @@ source env/bin/activate
 pip install -r requirements.txt
 ``` 
 * Open musicbox.py and edit the MQTT server address, username, password, and subscribe/publish topic
-* Customize your notification sound to <span style="font-size: 30px;">Remind your roommate!!</span>
+* Customize your notification sound to <span style="font-family:Papyrus; font-size:30px;">REMIND ROOMMATES!</span>
 
 
 # Project images <a name="project-images"></a>
