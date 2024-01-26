@@ -4,4 +4,4 @@ Run pip install -r requirements, then run ./setup.sh to install the supervisor t
 The command to play sound "mpg123" is not compatible with Python 3.11 which causes a "jack"-related error
 
 
-![rpi and esp32 ](working_process_images/IMG_7292.jpg "wer")
+![Rpi and ESP32_1.jpg](working_process_images%2FRpi%20and%20ESP32_1.jpg)
